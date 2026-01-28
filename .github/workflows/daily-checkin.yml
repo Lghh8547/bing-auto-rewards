@@ -2,8 +2,7 @@ name: Bing Daily Check-in
 
 on:
   schedule:
-    # 每天凌晨2点执行（UTC时间，对应北京时间10点）
-    - cron: '0 2 * * *'
+    - cron: '31 22 * * *'
   workflow_dispatch:  # 允许手动触发
   push:
     branches: [ main ]
