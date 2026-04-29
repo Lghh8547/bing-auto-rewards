@@ -36,7 +36,7 @@ if os.getenv('GITHUB_ACTIONS'):
 # ========== LOGGING ==========
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s: %(message)s",
+    format="%(asctime)s [%(levelname)s] [%(threadName)s] %(message)s",
     handlers=[
         logging.FileHandler(LOG_FILE, encoding="utf-8"),
         logging.StreamHandler()
@@ -60,11 +60,12 @@ def safe_driver_operation(driver, group_name, operation_name, operation_func):
     try:
         return operation_func()
     except Exception as e:
-        if "Failed to establish a new connection" in str(e) or "HTTPConnectionPool" in str(e) or "invalid session id" in str(e):
+        if any(err in str(e) for err in ["Failed to establish a new connection", "HTTPConnectionPool", "invalid session id"]):
             logger.warning(f"账号组 {group_name} {operation_name} 时检测到连接问题: {e}")
             return None
         else:
-            raise e
+            logger.error(f"账号组 {group_name} {operation_name} 时发生未知错误: {e}")
+            return None
 
 def wait_and_click(driver, by, value, timeout=WAIT_TIMEOUT):
     try:
@@ -252,7 +253,7 @@ def click_login_button(driver, idx):
         "//a[span[text()='登录'] or span[text()='Sign in'] or span[text()='登入']]"
         "|//a[contains(@aria-label, '登录') or contains(@aria-label, 'Sign in') or contains(@aria-label, '登入')]"
         "|//a[contains(text(), '登录') or contains(text(), 'Sign in') or contains(text(), '登入')]"
-        "|//button[span[text()='登录'] or span[text()='Sign in'] or span[text()='登入']]"
+        "|//button[span[text()='登录'] or span[text()='Sign in'] or span[text()='登入')]"
         "|//button[contains(@aria-label, '登录') or contains(@aria-label, 'Sign in') or contains(@aria-label, '登入')]"
         "|//button[contains(text(), '登录') or contains(text(), 'Sign in') or contains(text(), '登入')]"
     )
@@ -784,69 +785,60 @@ def create_chrome_options():
     chrome_options.add_argument('--disable-web-security')
     chrome_options.add_argument('--allow-running-insecure-content')
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-    
+
     # 在GitHub Actions环境中添加额外选项
     if os.getenv('GITHUB_ACTIONS'):
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        chrome_options.add_argument('--disable-software-rasterizer')
-        chrome_options.add_argument('--disable-background-timer-throttling')
-        chrome_options.add_argument('--disable-backgrounding-occluded-windows')
-        chrome_options.add_argument('--disable-renderer-backgrounding')
-        chrome_options.add_argument('--disable-features=TranslateUI')
-        chrome_options.add_argument('--disable-ipc-flooding-protection')
-        chrome_options.add_argument('--disable-setuid-sandbox')
-        chrome_options.add_argument('--disable-accelerated-2d-canvas')
-        chrome_options.add_argument('--disable-accelerated-jpeg-decoding')
-        chrome_options.add_argument('--disable-accelerated-mjpeg-decode')
-        chrome_options.add_argument('--disable-accelerated-video-decode')
-        chrome_options.add_argument('--disable-gpu-sandbox')
-        chrome_options.add_argument('--disable-software-rasterizer')
-        chrome_options.add_argument('--disable-threaded-animation')
-        chrome_options.add_argument('--disable-threaded-scrolling')
-        chrome_options.add_argument('--disable-checker-imaging')
-        chrome_options.add_argument('--disable-new-tab-first-run')
-        chrome_options.add_argument('--disable-default-apps')
-        chrome_options.add_argument('--disable-sync')
-        chrome_options.add_argument('--disable-translate')
-        chrome_options.add_argument('--disable-web-resources')
-        chrome_options.add_argument('--disable-client-side-phishing-detection')
-        chrome_options.add_argument('--disable-component-update')
-        chrome_options.add_argument('--disable-domain-reliability')
-        chrome_options.add_argument('--disable-features=VizDisplayCompositor')
-        chrome_options.add_argument('--disable-hang-monitor')
-        chrome_options.add_argument('--disable-prompt-on-repost')
-        chrome_options.add_argument('--disable-renderer-backgrounding')
-        chrome_options.add_argument('--disable-session-crashed-bubble')
-        chrome_options.add_argument('--disable-single-click-autofill')
-        chrome_options.add_argument('--disable-tab-for-desktop-share')
-        chrome_options.add_argument('--disable-usb-keyboard-detect')
-        chrome_options.add_argument('--disable-web-security')
-        chrome_options.add_argument('--no-first-run')
-        chrome_options.add_argument('--no-default-browser-check')
-        chrome_options.add_argument('--no-zygote')
-        chrome_options.add_argument('--single-process')
-        chrome_options.add_argument('--disable-background-networking')
-        chrome_options.add_argument('--disable-background-timer-throttling')
-        chrome_options.add_argument('--disable-backgrounding-occluded-windows')
-        chrome_options.add_argument('--disable-breakpad')
-        chrome_options.add_argument('--disable-component-extensions-with-background-pages')
-        chrome_options.add_argument('--disable-features=TranslateUI,BlinkGenPropertyTrees')
-        chrome_options.add_argument('--disable-ipc-flooding-protection')
-        chrome_options.add_argument('--disable-renderer-backgrounding')
-        chrome_options.add_argument('--disable-sync-preferences')
-        chrome_options.add_argument('--force-color-profile=srgb')
-        chrome_options.add_argument('--metrics-recording-only')
-        chrome_options.add_argument('--no-report-upload')
-        chrome_options.add_argument('--disable-background-timer-throttling')
-        chrome_options.add_argument('--disable-backgrounding-occluded-windows')
-        chrome_options.add_argument('--disable-renderer-backgrounding')
-    
+        additional_args = [
+            '--disable-dev-shm-usage',
+            '--disable-software-rasterizer',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
+            '--disable-features=TranslateUI',
+            '--disable-ipc-flooding-protection',
+            '--disable-setuid-sandbox',
+            '--disable-accelerated-2d-canvas',
+            '--disable-accelerated-jpeg-decoding',
+            '--disable-accelerated-mjpeg-decode',
+            '--disable-accelerated-video-decode',
+            '--disable-gpu-sandbox',
+            '--disable-threaded-animation',
+            '--disable-threaded-scrolling',
+            '--disable-checker-imaging',
+            '--disable-new-tab-first-run',
+            '--disable-default-apps',
+            '--disable-sync',
+            '--disable-translate',
+            '--disable-web-resources',
+            '--disable-client-side-phishing-detection',
+            '--disable-component-update',
+            '--disable-domain-reliability',
+            '--disable-features=VizDisplayCompositor',
+            '--disable-hang-monitor',
+            '--disable-prompt-on-repost',
+            '--disable-session-crashed-bubble',
+            '--disable-single-click-autofill',
+            '--disable-tab-for-desktop-share',
+            '--disable-usb-keyboard-detect',
+            '--disable-web-security',
+            '--no-first-run',
+            '--no-default-browser-check',
+            '--no-zygote',
+            '--single-process',
+            '--disable-background-networking',
+            '--force-color-profile=srgb',
+            '--metrics-recording-only',
+            '--no-report-upload'
+        ]
+        for arg in additional_args:
+            chrome_options.add_argument(arg)
+
     if HEADLESS:
         chrome_options.add_argument('--headless=new')
         chrome_options.add_argument('--disable-gpu')
         chrome_options.add_argument('--window-size=1920,1080')
         chrome_options.add_argument('--remote-debugging-port=9222')
-    
+
     return chrome_options
 
 def process_account_group(group_name, accounts, search_words):
